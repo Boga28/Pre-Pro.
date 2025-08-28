@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Page-Flip Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.2.13/epub.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -27,40 +28,143 @@
             padding: 20px;
             box-sizing: border-box;
         }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #viewer {
+            width: 800px;
+            height: 600px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            background-color: white;
+        }
+        /* This will be the container for our page-flip book */
+        #book {
+            width: 100%;
+            height: 100%;
+        }
+        /* Hide the epub.js default viewer */
+        .epub-container {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
 
-<div id="book">
-    <div class="my-page" data-density="hard">
-        <img src="images/01.jpg" alt="Page 1" />
+<div class="container">
+    <div class="controls">
+        <button id="load-book">Load "Alice in Wonderland"</button>
+        <button id="prev-page">Previous</button>
+        <button id="next-page">Next</button>
     </div>
-    <div class="my-page">
-        <img src="images/02.jpg" alt="Page 2" />
+    <div id="viewer">
+        <div id="book"></div>
     </div>
-    <div class="my-page">
-        <img src="images/03.jpg" alt="Page 3" />
-    </div>
-    <div class="my-page">
-        <img src="images/04.jpg" alt="Page 4" />
-    </div>
-    <div class="my-page">
-        <img src="images/05.jpg" alt="Page 5" />
-    </div>
-    <div class="my-page" data-density="hard">
-        <img src="images/06.jpg" alt="Page 6" />
-    </div>
+    <div id="epub-render-area" style="display: none;"></div>
 </div>
 
 <script src="js/page-flip.browser.js"></script>
 <script>
-    const pageFlip = new St.PageFlip(document.getElementById('book'), {
-        width: 550,
-        height: 733,
-        showCover: true
-    });
+    const loadBookBtn = document.getElementById('load-book');
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    const bookContainer = document.getElementById('book');
 
-    pageFlip.loadFromHTML(document.querySelectorAll('.my-page'));
+    let pageFlip;
+    let book;
+
+    loadBookBtn.addEventListener('click', () => {
+        // Path to the EPUB file inside the docs directory
+        const epubPath = 'epub_books/alice.epub';
+
+        // Initialize the ePub reader
+        book = ePub(epubPath);
+
+        // Render the book to a hidden area to process its contents
+        const renderArea = document.getElementById('epub-render-area');
+        const rendition = book.renderTo(renderArea, {
+            width: "100%",
+            height: "100%"
+        });
+
+        // Display the first page
+        rendition.display();
+
+        book.ready.then(() => {
+            return book.locations.generate(1600); // Generate locations based on a rough character count per page
+        }).then(locations => {
+            console.log('Locations generated', locations);
+
+            // Clear the book container
+            bookContainer.innerHTML = '';
+
+            // This is a simplified approach: we create a page for each "location"
+            // A more advanced approach would be to paginate chapter by chapter
+            locations.forEach((location, index) => {
+                const cfi = locations.cfiFromLocation(location);
+                const pageElement = document.createElement('div');
+                pageElement.classList.add('my-page');
+
+                // We will load the content on demand
+                pageElement.dataset.cfi = cfi;
+                bookContainer.appendChild(pageElement);
+            });
+
+            // Initialize PageFlip
+            pageFlip = new St.PageFlip(bookContainer, {
+                width: 400, // half of the viewer width
+                height: 600,
+                size: 'stretch'
+            });
+            pageFlip.loadFromHTML(document.querySelectorAll('.my-page'));
+
+            // Function to load content for a specific page
+            const loadPageContent = (pageIndex) => {
+                const page = document.querySelectorAll('.my-page')[pageIndex];
+                if (page && page.dataset.cfi && !page.innerHTML.trim()) {
+                    rendition.display(page.dataset.cfi).then(() => {
+                        const pageContent = renderArea.innerHTML;
+                        page.innerHTML = pageContent;
+                    });
+                }
+            };
+
+            // Load the first couple of pages
+            loadPageContent(0);
+            loadPageContent(1);
+
+            // Event listener for page flipping to load new content
+            pageFlip.on('flip', (e) => {
+                console.log('Flipping to page', e.data);
+                // Load content for the next and the one after
+                loadPageContent(e.data);
+                loadPageContent(e.data + 1);
+            });
+
+            // Set up nav buttons
+            prevPageBtn.addEventListener('click', () => {
+                if (pageFlip) pageFlip.flipPrev();
+            });
+
+            nextPageBtn.addEventListener('click', () => {
+                if (pageFlip) pageFlip.flipNext();
+            });
+
+            alert('Book loaded! You can now use the next/prev buttons.');
+        }).catch(err => {
+            console.error("Error loading book:", err);
+            alert('Could not load the book. See console for details.');
+        });
+    });
 </script>
 
 </body>
