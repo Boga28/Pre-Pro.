@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page-Flip Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: sans-serif;
+        }
+        #book {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .my-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<div id="book">
+    <div class="my-page" data-density="hard">
+        Page Cover
+    </div>
+    <div class="my-page">
+        Page one
+    </div>
+    <div class="my-page">
+        Page two
+    </div>
+    <div class="my-page">
+        Page three
+    </div>
+    <div class="my-page">
+        Page four
+    </div>
+    <div class="my-page" data-density="hard">
+        Last page
+    </div>
+</div>
+
+<script src="js/page-flip.browser.js"></script>
+<script>
+    const pageFlip = new St.PageFlip(document.getElementById('book'), {
+        width: 550,
+        height: 733,
+        showCover: true
+    });
+
+    // This will be replaced later with image loading
+    pageFlip.loadFromHTML(document.querySelectorAll('.my-page'));
+</script>
+
+</body>
+</html>
